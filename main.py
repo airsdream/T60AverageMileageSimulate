@@ -36,7 +36,7 @@ for i in range(cycle):
             while repair_dates[i][j] + repair_times[i][j] >= repair_dates[i][j+1]:  #检查维修日期加上维修时长超过下一次维修日期的数据
                 #print('维修日期不合理',repair_dates[i],repair_times[i],'->',end='') #打印维修日期加上维修时长超过下一次维修日期的数据
                 repair_dates[i] = GetRepairDate(duration,times) #重新生成维修日期
-                #print(repair_dates[i],repair_times[i])  #打印新成圣的维修日期及上一次生成的维修时长
+                #print(repair_dates[i],repair_times[i])  #打印新生成的维修日期及上一次生成的维修时长
         else:
             if repair_dates[i][j] + repair_times[i][j] >= duration:
                 #print('最后一次维修超出运营期限', repair_dates[i], repair_times[i],'->',end='')
@@ -47,7 +47,7 @@ for i in range(cycle):
 
 # 计算运营的时长 #
 
-on_business = []    #每次投放运营，该次运营的时长（天）
+on_business = []    #每次投放运营，各次运营的时长（天）
 business_days = []  #所有循环模拟中，每次循环的平均运营时长列表
 
 for i in range(cycle):
@@ -61,20 +61,35 @@ for i in range(cycle):
     business_days.append(on_business)
 #print(business_days)
 
+# 计算平均无维修运营时长 #
+
+average_riding_days_per_cycle = []
+average_riding_days = 0
+
+for i in range(cycle):
+    for j in range(len(repair_dates[i])):
+        average_riding_days_per_cycle.append(np.average(business_days[i]))
+average_riding_days = np.average(average_riding_days_per_cycle)
+
 # 计算每次循环中，每次投放运营的里程 #
 
-mileage_per_cycle = []
+mileage_per_cycle = []  #每次循环的总计骑行里程
+random_riding_mileage_per_cycle = []  #每次循环平均运营骑行里程的列表
+riding_mileage_per_operation = []   #每次投放的随机每日车均运营里程的列表
 
 for i in range(cycle):
     mileage_per_day = []
+    riding_mileage_per_operation = []
     for j in range(len(business_days[i])):
         if random_riding_mileage:
             average_mileage = random.uniform(min_mileage,max_mileage)
         average_mileage = round(average_mileage,3)
+        riding_mileage_per_operation.append(average_mileage)
         mileage_per_day.append(business_days[i][j] * average_mileage)
     mileage_per_cycle.append(mileage_per_day)
+    random_riding_mileage_per_cycle.append(np.average(riding_mileage_per_operation))
 #print(mileage_per_cycle)
-
+#print(random_riding_mileage_per_day)
 
 # 计算每次循环的累计平均运营里程 #
 
@@ -87,21 +102,27 @@ for i in range(cycle):
         success += 1
 #print(accumulative_average_mileage_per_cycle)
 
-
+# 如果使用随机维修次数，重新计算车均维修次数
 if random_repair_times:
     times = np.average(repairs)
+if random_riding_mileage:
+    average_mileage = np.average(random_riding_mileage_per_cycle)
 
+# 输出模拟分析结果
 print('累计模拟循环 = ',cycle)
-print('平均维修次数 = ',times)
+print('平均维修次数 = %.2f 次'%times)
+print('平均无维修时长 = %.2f 天'%average_riding_days)
+print('每日车均骑行里程 = %.2f km'%average_mileage)
 print('成功达到500km目标的概率 = %.2f %%'%(success/cycle*100))
 
 # 划分横坐标分度值
 
 bins = []
-for i in range(0,(int(max(accumulative_average_mileage_per_cycle)) // 100 + 1) * 100 + 1,10):
+for i in range(0,(int(max(accumulative_average_mileage_per_cycle)) // 100 + 1) * 100 + 1,5):
     bins.append(i)
 
 # 绘制直方图
 
-#plt.hist(accumulative_average_mileage_per_cycle, bins= bins)
-#plt.show()
+plt.hist(accumulative_average_mileage_per_cycle, bins= bins)
+plt.title('Accumulative Average Riding Mileage')
+plt.show()
